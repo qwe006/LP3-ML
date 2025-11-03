@@ -1,0 +1,86 @@
+# --- Import necessary libraries ---
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score
+
+# --- Step 1: Load Dataset ---
+dataset = pd.read_csv("diabetes (1).csv")   # make sure the file is in the same folder or give full path
+
+print("Dataset Preview:")
+print(dataset.head())
+
+print("\nDataset Info:")
+print(dataset.info())
+
+print("\nMissing Values:")
+print(dataset.isnull().sum())
+
+# --- Step 2: Feature and Target Split ---
+X = dataset.drop(columns='Outcome')
+y = dataset['Outcome']
+
+# --- Step 3: Split into Train and Test ---
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# --- Step 4: Normalize the Data ---
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# --- Step 5: Initialize and Train KNN Model ---
+k = 5   # you can experiment with different values like 3, 7, 9
+model = KNeighborsClassifier(n_neighbors=k)
+model.fit(X_train_scaled, y_train)
+
+# --- Step 6: Make Predictions ---
+y_pred = model.predict(X_test_scaled)
+
+# --- Step 7: Evaluation Metrics ---
+cm = confusion_matrix(y_test, y_pred)
+acc = accuracy_score(y_test, y_pred)
+err_rate = 1 - acc
+prec = precision_score(y_test, y_pred)
+rec = recall_score(y_test, y_pred)
+
+print("\n📊 Evaluation Results:")
+print(f"Confusion Matrix:\n{cm}")
+print(f"Accuracy      : {acc*100:.2f}%")
+print(f"Error Rate    : {err_rate*100:.2f}%")
+print(f"Precision     : {prec*100:.2f}%")
+print(f"Recall        : {rec*100:.2f}%")
+
+# --- Step 8: Confusion Matrix Visualization ---
+plt.figure(figsize=(5,4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+plt.title(f"KNN Confusion Matrix (k={k})")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+# --- Step 9: Accuracy vs K Visualization ---
+acc_values = []
+k_values = range(1, 21)
+
+for i in k_values:
+    knn = KNeighborsClassifier(n_neighbors=i)
+    knn.fit(X_train_scaled, y_train)
+    y_pred_i = knn.predict(X_test_scaled)
+    acc_values.append(accuracy_score(y_test, y_pred_i))
+
+plt.figure(figsize=(7,4))
+plt.plot(k_values, acc_values, color='blue', marker='o', linestyle='dashed')
+plt.title("Accuracy vs K value")
+plt.xlabel("K value")
+plt.ylabel("Accuracy")
+plt.grid(True)
+plt.show()
+
+print(f"\nBest accuracy of {max(acc_values)*100:.2f}% achieved at K = {k_values[acc_values.index(max(acc_values))]}")
