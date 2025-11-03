@@ -1,0 +1,97 @@
+!pip install tensorflow
+#Bank customer neural network code
+# Step 1: Import Required Libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Input
+
+# Step 2: Read the Dataset
+dataset = pd.read_csv("Churn_Modelling (1).csv")
+print("Dataset Loaded Successfully!\n")
+print(dataset.head())
+
+# Step 3: Feature & Target Split
+X = dataset[['CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance',
+             'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']].copy()
+y = dataset['Exited']
+
+# Step 4: Encode Categorical Features
+le_geo = LabelEncoder()
+le_gender = LabelEncoder()
+X['Geography'] = le_geo.fit_transform(X['Geography'])
+X['Gender'] = le_gender.fit_transform(X['Gender'])
+
+# Step 5: Data Visualization (Before Training)
+plt.figure(figsize=(10,5))
+sns.countplot(x='Geography', hue='Exited', data=dataset)
+plt.title('Customer Churn Distribution by Geography')
+plt.show()
+
+plt.figure(figsize=(10,5))
+sns.histplot(dataset['Age'], bins=30, kde=True, color='teal')
+plt.title('Age Distribution of Customers')
+plt.show()
+
+# Step 6: Split into Train/Test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 7: Normalize Data
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Step 8: Build ANN Model (Clean Input Layer Style)
+model = Sequential([
+    Input(shape=(X_train.shape[1],)),
+    Dense(16, activation='relu'),
+    Dropout(0.2),
+    Dense(8, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
+
+# Step 9: Compile the Model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Step 10: Train the Model
+history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_split=0.2, verbose=1)
+
+# Step 11: Visualize Training Progress
+plt.figure(figsize=(10,5))
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Model Accuracy Progress')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(10,5))
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Model Loss Progress')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+# Step 12: Evaluate the Model
+y_pred = (model.predict(X_test) > 0.5).astype(int)
+
+accuracy = accuracy_score(y_test, y_pred)
+cm = confusion_matrix(y_test, y_pred)
+print("\nAccuracy Score:", round(accuracy * 100, 2), "%")
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+# Step 13: Visualize Confusion Matrix
+plt.figure(figsize=(6,4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Greens')
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
