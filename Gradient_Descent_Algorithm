@@ -1,0 +1,99 @@
+# gradient_descent_example.py
+import numpy as np
+import matplotlib.pyplot as plt
+
+# --- Function and derivative ---
+def f(x):
+    return (x + 3)**2
+
+def grad_f(x):
+    # derivative of (x+3)^2 is 2*(x+3)
+    return 2 * (x + 3)
+
+# --- Basic Gradient Descent Implementation ---
+def gradient_descent(
+    x0, lr=0.1, max_iters=100, tol=1e-8, record_history=True
+):
+    x = x0
+    history = {'x': [], 'f': [], 'grad': []}
+    for i in range(max_iters):
+        g = grad_f(x)
+        if record_history:
+            history['x'].append(x)
+            history['f'].append(f(x))
+            history['grad'].append(g)
+        # update
+        x_new = x - lr * g
+        # stopping criterion: small change in x or small gradient
+        if abs(x_new - x) < tol or abs(g) < tol:
+            x = x_new
+            if record_history:
+                history['x'].append(x)
+                history['f'].append(f(x))
+                history['grad'].append(grad_f(x))
+            break
+        x = x_new
+    return x, i+1, history
+
+# --- Run experiments ---
+start_x = 2.0
+learning_rate = 0.1
+max_iters = 100
+
+x_star, iters_used, hist = gradient_descent(start_x, lr=learning_rate, max_iters=max_iters)
+
+print("Gradient Descent result:")
+print(f"  start x = {start_x}")
+print(f"  learning rate = {learning_rate}")
+print(f"  converged x = {x_star:.12f}")
+print(f"  f(x) = {f(x_star):.12e}")
+print(f"  iterations used = {iters_used}")
+
+# --- Plot function and iterates on curve ---
+xs = np.linspace(-6, 2, 400)
+ys = f(xs)
+
+plt.figure(figsize=(10,4))
+plt.subplot(1,2,1)
+plt.plot(xs, ys, label='y = (x+3)^2')
+plt.scatter(hist['x'], hist['f'], color='red', zorder=5)
+plt.plot(hist['x'], hist['f'], color='red', linestyle='--', alpha=0.6, label='GD path')
+plt.scatter([-3], [f(-3)], color='green', s=80, label='True minimum (x = -3)')
+plt.title('Function and Gradient Descent Path')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.legend()
+plt.grid(True)
+
+# --- Plot x vs iteration and loss vs iteration ---
+plt.subplot(1,2,2)
+iters = np.arange(len(hist['x']))
+plt.plot(iters, hist['x'], marker='o', label='x value')
+plt.hlines(-3, 0, len(iters)-1, colors='green', linestyles='dashed', label='x = -3')
+plt.title('x value per iteration')
+plt.xlabel('Iteration')
+plt.ylabel('x')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(6,4))
+plt.plot(np.arange(len(hist['f'])), hist['f'], marker='o')
+plt.yscale('log')   # show convergence on log scale
+plt.title('Loss f(x) per iteration (log scale)')
+plt.xlabel('Iteration')
+plt.ylabel('f(x)')
+plt.grid(True)
+plt.show()
+
+# --- Quick comparison of different learning rates ---
+rates = [0.01, 0.05, 0.1, 0.5, 1.0]
+results = []
+for r in rates:
+    x_res, its, _ = gradient_descent(start_x, lr=r, max_iters=200)
+    results.append((r, x_res, its, f(x_res)))
+
+print("\nLearning rate comparison:")
+for r, xr, its, fx in results:
+    print(f" lr={r:>4} -> x={xr:.9f}, f(x)={fx:.3e}, iters={its}")
