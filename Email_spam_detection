@@ -1,0 +1,73 @@
+# Email Spam Detection using KNN and SVM
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# Step 1: Load Dataset
+df = pd.read_csv("emails.csv")
+
+print("Dataset Shape:", df.shape)
+print("\nColumns:", df.columns[:10], "...")  # show first 10 columns
+print("\nMissing Values:\n", df.isnull().sum().head())
+
+# Step 2: Separate features and target
+X = df.drop(columns=["Email No.", "Prediction"])
+y = df["Prediction"]
+
+# Step 3: Split into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 4: Normalize the features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Step 5: KNN Model
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train_scaled, y_train)
+y_pred_knn = knn.predict(X_test_scaled)
+
+# Step 6: SVM Model
+svm = SVC(kernel='linear')
+svm.fit(X_train_scaled, y_train)
+y_pred_svm = svm.predict(X_test_scaled)
+
+# Step 7: Evaluate Performance
+acc_knn = accuracy_score(y_test, y_pred_knn)
+acc_svm = accuracy_score(y_test, y_pred_svm)
+
+print("\n📊 Model Performance:")
+print(f"KNN Accuracy: {acc_knn*100:.2f}%")
+print(f"SVM Accuracy: {acc_svm*100:.2f}%")
+
+print("\nKNN Classification Report:\n", classification_report(y_test, y_pred_knn))
+print("SVM Classification Report:\n", classification_report(y_test, y_pred_svm))
+
+# Step 8: Confusion Matrices Visualization
+fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+sns.heatmap(confusion_matrix(y_test, y_pred_knn), annot=True, fmt="d", cmap="Blues", ax=ax[0])
+ax[0].set_title("KNN Confusion Matrix")
+ax[0].set_xlabel("Predicted")
+ax[0].set_ylabel("Actual")
+
+sns.heatmap(confusion_matrix(y_test, y_pred_svm), annot=True, fmt="d", cmap="Greens", ax=ax[1])
+ax[1].set_title("SVM Confusion Matrix")
+ax[1].set_xlabel("Predicted")
+ax[1].set_ylabel("Actual")
+
+plt.tight_layout()
+plt.show()
+
+# Step 9: Compare Models
+plt.figure(figsize=(5,4))
+plt.bar(["KNN", "SVM"], [acc_knn, acc_svm], color=["skyblue", "lightgreen"])
+plt.title("Model Accuracy Comparison")
+plt.ylabel("Accuracy")
+plt.show()
