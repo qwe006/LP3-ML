@@ -1,0 +1,121 @@
+# --- Step 1: Import Required Libraries ---
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score, mean_squared_error
+from math import sqrt
+
+# --- Step 2: Load Dataset ---
+df = pd.read_csv("uber.csv")
+
+print("Dataset Preview:")
+print(df.head())
+
+print("\nDataset Info:")
+print(df.info())
+
+print("\nMissing Values:")
+print(df.isnull().sum())
+
+# --- Step 3: Data Preprocessing ---
+# Drop missing or invalid rows
+df = df.dropna()
+
+# Remove records with zero or negative fare or passengers
+df = df[(df['fare_amount'] > 0) & (df['passenger_count'] > 0)]
+
+# Keep only realistic latitude and longitude values
+df = df[
+    (df['pickup_longitude'] >= -80) & (df['pickup_longitude'] <= -70) &
+    (df['dropoff_longitude'] >= -80) & (df['dropoff_longitude'] <= -70) &
+    (df['pickup_latitude'] >= 35) & (df['pickup_latitude'] <= 45) &
+    (df['dropoff_latitude'] >= 35) & (df['dropoff_latitude'] <= 45)
+]
+
+print("\nCleaned Data Shape:", df.shape)
+
+# --- Step 4: Feature Engineering ---
+# Calculate distance using the Haversine formula
+def haversine_distance(lat1, lon1, lat2, lon2):
+    R = 6371  # Earth radius in km
+    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = np.sin(dlat/2)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlon/2)**2
+    return 2 * R * np.arcsin(np.sqrt(a))
+
+df['distance_km'] = haversine_distance(
+    df['pickup_latitude'], df['pickup_longitude'],
+    df['dropoff_latitude'], df['dropoff_longitude']
+)
+
+# --- Step 5: Identify Outliers ---
+plt.figure(figsize=(7,4))
+sns.boxplot(df['fare_amount'])
+plt.title("Outliers in Fare Amount")
+plt.show()
+
+# Remove extreme outliers in fare and distance
+df = df[(df['fare_amount'] < 100) & (df['distance_km'] < 100)]
+
+print("\nAfter Removing Outliers:", df.shape)
+
+# --- Step 6: Check Correlation ---
+plt.figure(figsize=(6,5))
+sns.heatmap(df[['fare_amount', 'distance_km', 'passenger_count']].corr(), annot=True, cmap='coolwarm')
+plt.title("Feature Correlation Heatmap")
+plt.show()
+
+# --- Step 7: Split Data into Features and Target ---
+X = df[['distance_km', 'passenger_count']]
+y = df['fare_amount']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# --- Step 8: Implement Linear Regression ---
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+
+y_pred_lr = lr.predict(X_test)
+
+# --- Step 9: Implement Random Forest Regression ---
+rf = RandomForestRegressor(n_estimators=100, random_state=42)
+rf.fit(X_train, y_train)
+
+y_pred_rf = rf.predict(X_test)
+
+# --- Step 10: Evaluate Both Models ---
+def evaluate_model(y_true, y_pred, model_name):
+    r2 = r2_score(y_true, y_pred)
+    rmse = sqrt(mean_squared_error(y_true, y_pred))
+    print(f"\n📈 {model_name} Performance:")
+    print(f"R² Score     : {r2:.4f}")
+    print(f"RMSE         : {rmse:.4f}")
+
+evaluate_model(y_test, y_pred_lr, "Linear Regression")
+evaluate_model(y_test, y_pred_rf, "Random Forest Regression")
+
+# --- Step 11: Compare Predictions ---
+results = pd.DataFrame({
+    'Actual': y_test.values[:20],
+    'Linear_Pred': y_pred_lr[:20],
+    'RF_Pred': y_pred_rf[:20]
+})
+print("\nSample Prediction Comparison:")
+print(results)
+
+# --- Step 12: Visualize Actual vs Predicted ---
+plt.figure(figsize=(7,4))
+plt.scatter(y_test, y_pred_lr, color='blue', label='Linear Regression', alpha=0.5)
+plt.scatter(y_test, y_pred_rf, color='green', label='Random Forest', alpha=0.5)
+plt.xlabel("Actual Fare")
+plt.ylabel("Predicted Fare")
+plt.legend()
+plt.title("Actual vs Predicted Fare Comparison")
+plt.grid(True)
+plt.show()
